@@ -1,79 +1,92 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// The screenshot scenes behind ?shot=start|drive|chase|mission (with &seed=1). Each one
+// sets up a deterministic moment of the real game — the same seed always builds the same
+// city, the same car, the same chase — and the main loop's autopilot keeps the drive and
+// chase shots moving while the screenshot is taken.
+import { PLACES } from './missions.js';
+import { Car } from './vehicles.js';
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
 /**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
+ * Move traffic off the player's screenshot street near the start, so the drive stays
+ * clean — but leave cars further down the road, where they read as traffic ahead.
  */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
-
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
+function clearStreet(traffic, streetZ, band) {
+  for (const car of traffic.cars) {
+    if (Math.abs(car.z - streetZ) < band && car.x > -80 && car.x < 100) {
+      car.z = streetZ + 46;
+      car.traffic.street = streetZ + 46;
+      car.traffic.vertical = false;
     }
   }
-  return Infinity;
 }
 
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
-  }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
-    }
-  }
-  return best;
+/** Put the player in a fresh car on the eastbound lane of Meridian Avenue (z = 0). */
+function stageDrive(G) {
+  const car = new Car(G.scene, -40, -3, Math.PI / 2, 0xc23b2e, { driver: null });
+  G.shotCars.push(car);
+  G.player.enterCar(car);
+  G.player.camYaw = Math.PI / 2;
+  clearStreet(G.traffic, 0, 9);
+  G.hud.show();
 }
 
 /**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
+ * Set the game to the named scene and return its screen and autopilot mode.
+ * Autopilot 'drive' holds the car on Meridian Avenue heading east; 'none' stands still.
  */
-export function stageShot(name, world) {
-  world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
+export function stageShot(name, G) {
+  if (name === 'drive') {
+    stageDrive(G);
+    G.missions.start(0);
+    G.hud.setObjective(G.missions.objectiveText);
+    return { screen: 'playing', autopilot: 'drive' };
   }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
+  if (name === 'chase') {
+    stageDrive(G);
+    G.missions.start(1);
+    // Step past the "heat is on" beat to the getaway objective, then raise it to 3 stars.
+    G.missions.update(0.01);
+    G.wanted.commitCrime(3);
+    // Three patrol cars right behind the player, already in pursuit.
+    const spots = [[-58, -3], [-66, 3], [-74, -3]];
+    for (const [x, z] of spots) {
+      const cop = G.wanted.spawnCarNear(G.player.car.x, G.player.car.z);
+      cop.x = x;
+      cop.z = z;
+      cop.heading = Math.PI / 2;
+      cop.speed = 25;
+      cop.syncMesh(0);
+    }
+    G.hud.show();
+    return { screen: 'playing', autopilot: 'drive' };
   }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
+  if (name === 'mission') {
+    G.player.reset(-46, -58);
+    G.player.heading = Math.PI;
+    G.player.camYaw = Math.PI;
+    G.player.group.rotation.y = Math.PI;
+    G.missions.start(0);
+    G.hud.show();
+    return { screen: 'playing', autopilot: 'none' };
+  }
+  // 'start' and anything else: the title screen over the living city.
+  return { screen: 'title', autopilot: 'none' };
 }
+
+/**
+ * Autopilot input for the drive/chase shots: full throttle east along Meridian Avenue,
+ * steering back to the lane and the heading. Returns { forward, strafe }.
+ */
+export function autopilotInput(G) {
+  const car = G.player.car;
+  if (!car) return { forward: 0, strafe: 0 };
+  const targetHeading = Math.PI / 2;
+  let err = targetHeading - car.heading;
+  while (err > Math.PI) err -= Math.PI * 2;
+  while (err < -Math.PI) err += Math.PI * 2;
+  const laneErr = -3 - car.z;
+  let steer = err * 1.6 + laneErr * 0.06;
+  steer = Math.max(-1, Math.min(1, steer));
+  return { forward: 1, strafe: steer };
+}
+
+export { PLACES };

@@ -3,17 +3,102 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-</style>
+<title>SOLMAR — Streets of the Sun</title>
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
+<canvas id="game" aria-label="SOLMAR: an open-world crime game. Drive, explore the city, lose the police and run jobs for Mara."></canvas>
+
+<!-- In-game HUD -->
+<div id="hud" class="hidden">
+  <div id="wanted-flash"></div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="objective"></div>
+  </div>
+  <div id="status-cluster">
+    <div id="stars"></div>
+    <div id="money">$500</div>
+    <div id="health-bar"><div id="health-fill"></div><span id="health-text">100</span></div>
+  </div>
+  <div id="speed" class="hidden"><span id="speed-value">0</span><span class="unit">km/h</span></div>
+  <div id="crosshair" class="hidden">+</div>
+  <div id="interact" class="hidden"></div>
+  <div id="toast" class="hidden">
+    <div id="toast-title"></div>
+    <div id="toast-body"></div>
+  </div>
+  <div id="help" class="hidden">
+    <strong>Controls</strong><br>
+    WASD — move / drive &nbsp;·&nbsp; Mouse — camera &nbsp;·&nbsp; Shift — sprint<br>
+    E — take / leave a car &nbsp;·&nbsp; Q — draw / holster pistol &nbsp;·&nbsp; Click — punch / shoot<br>
+    Space — jump / handbrake &nbsp;·&nbsp; M — start the next job &nbsp;·&nbsp; H — this help &nbsp;·&nbsp; N — mute &nbsp;·&nbsp; Esc — pause
+  </div>
+</div>
+
+<!-- Title screen -->
+<div id="title-screen">
+  <div class="panel title-panel">
+    <div class="kicker">An open-world crime game</div>
+    <h1>SOLMAR</h1>
+    <div class="subtitle">STREETS OF THE SUN</div>
+    <p id="story-intro"></p>
+    <div class="buttons">
+      <button id="new-game-btn" class="primary">New Game</button>
+      <button id="continue-btn" class="hidden">Continue</button>
+      <button id="howto-btn">How to Play</button>
+    </div>
+    <div id="howto" class="hidden">
+      <p><strong>WASD</strong> move / drive &nbsp; <strong>Mouse</strong> camera &nbsp; <strong>Shift</strong> sprint<br>
+      <strong>E</strong> take or leave any car &nbsp; <strong>Q</strong> pistol &nbsp; <strong>Click</strong> punch / shoot<br>
+      <strong>Space</strong> jump / handbrake &nbsp; <strong>M</strong> start the next job &nbsp; <strong>H</strong> help &nbsp; <strong>Esc</strong> pause</p>
+      <p>Steal cars, outrun the patrols, and run Mara's five jobs to buy back the garage.
+      Stars mean heat: break line of sight and stay quiet to cool down.</p>
+    </div>
+    <div class="columns">
+      <div>
+        <h2>Jobs</h2>
+        <ul id="mission-list"></ul>
+        <div id="story-complete" class="hidden complete">★ Story complete — the garage is yours ★</div>
+      </div>
+      <div>
+        <h2>Your record</h2>
+        <ul class="stats">
+          <li>Cash <span id="stat-money">$500</span></li>
+          <li>Highest heat <span id="stat-wanted">0★</span></li>
+          <li>Cars taken <span id="stat-cars">0</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pause menu -->
+<div id="pause-screen" class="hidden">
+  <div class="panel">
+    <h1>Paused</h1>
+    <p>Solmar waits for no one — except right now.</p>
+    <div class="buttons">
+      <button id="resume-btn" class="primary">Resume</button>
+      <button id="restart-btn">Restart Mission</button>
+      <button id="quit-btn">Quit to Title</button>
+    </div>
+  </div>
+</div>
+
+<!-- Busted / Wasted -->
+<div id="end-screen" class="hidden">
+  <div class="panel">
+    <h1 id="end-title">BUSTED</h1>
+    <p id="end-body"></p>
+    <p id="end-fine"></p>
+    <div class="buttons">
+      <button id="respawn-btn" class="primary">Back on the Streets</button>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

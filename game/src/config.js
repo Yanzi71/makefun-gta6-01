@@ -1,61 +1,104 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Tunable constants for Solmar: city layout, movement, cars, police and scoring.
+// One file holds every magic number so balancing never means hunting through systems.
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
-
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
+export const WORLD = {
+  /** Playable half-extent; the world is clamped to [-half, half] on x and z. */
+  half: 168,
+  /** Street centre lines, both directions. */
+  streets: [-138, -92, -46, 0, 46, 92, 138],
+  roadWidth: 12,
+  blockSize: 34,
+  /** Block centres (midpoints between neighbouring streets). */
+  blocks: [-115, -69, -23, 23, 69, 115],
+  /** The park takes the block at blocks[2] x blocks[2]. */
+  parkBlock: 2,
+  /** Water starts past this x; the beach runs from beachStart to waterStart. */
+  beachStart: 156,
+  waterStart: 172,
+};
 
 export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  walkSpeed: 6.5,
+  sprintSpeed: 11,
+  radius: 0.6,
+  height: 1.8,
+  jumpSpeed: 7.5,
+  gravity: 22,
+  maxHealth: 100,
+  /** Health regained per second after 10 s without damage. */
+  regenPerSecond: 3,
+  /** How close a car must be to steal it with E. */
+  enterRange: 3.4,
+  punchRange: 2.4,
+  punchDamage: 34,
+  pistolDamage: 45,
+  pistolRange: 90,
+  /** Seconds between pistol shots. */
+  pistolCooldown: 0.28,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+export const CAR = {
+  maxSpeed: 38,
+  reverseMax: 12,
+  accel: 24,
+  brake: 34,
+  drag: 0.55,
+  /** Steering rate at low speed, radians per second. */
+  turnRate: 2.1,
+  /** Steering gets lazier as speed rises. */
+  turnFalloff: 0.55,
+  handbrakeDrag: 2.4,
+  radius: 2.1,
+  maxHealth: 100,
+  /** Damage taken per unit of impact speed over the threshold. */
+  crashDamage: 2.2,
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
+export const TRAFFIC = {
+  count: 14,
+  speedMin: 7,
+  speedMax: 12,
+  /** Chance a traffic car turns at an intersection instead of going straight. */
+  turnChance: 0.35,
 };
 
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
+export const PEDS = {
+  count: 20,
+  walkMin: 1.2,
+  walkMax: 2.0,
+  fleeSpeed: 5.5,
+};
 
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
+export const POLICE = {
+  /** Seconds a crime stays "hot": no decay while a cop is near or a crime is fresh. */
+  heatSeconds: 12,
+  /** Seconds of calm needed to lose one star. */
+  decaySeconds: 10,
+  /** Chase speed cap, slightly above the player's top speed at high stars. */
+  chaseSpeed: 40,
+  /** Seconds a cop must stand next to a slow player to bust them. */
+  bustSeconds: 3,
+  bustRange: 3.2,
+  /** On-foot cops only join the hunt at this many stars. */
+  footCopsAtStars: 3,
+  /** How far away police cars spawn from the player. */
+  spawnDistance: 55,
+};
+
+export const MONEY = {
+  start: 500,
+  bustedFine: 150,
+  wastedFine: 100,
+};
 
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  sky: 0x87c5e8,
+  fog: 0x9fd0e8,
+  sun: 0xfff2d8,
+  ground: 0x8a9a7b,
+  road: 0x3a3f44,
+  sidewalk: 0xb9b3a4,
+  beach: 0xe8d9a0,
+  water: 0x2e7fa8,
+  park: 0x5d8a4a,
 };
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
